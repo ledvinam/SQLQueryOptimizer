@@ -14,7 +14,7 @@
 1. **Clone the Repository**:
 
    ```bash
-   git clone https://github.com/yourusername/AgenticSQLQueryOptimizer.git
+   git clone https://github.com/ledvinam/SQLQueryOptimizer.git
    cd AgenticSQLQueryOptimizer
    ```
 
@@ -39,7 +39,7 @@
 
 2. **Provide SQL Procedures/Functions**:
 
-   * Place your SQL code in the `sql_inputs/` directory.
+   * Place your SQL code in the `inputs/` directory.
 
 3. **Run the Optimizer**:
 
@@ -55,9 +55,8 @@
 
 ```
 AgenticSQLQueryOptimizer/
-├── sql_inputs/           # Directory for input SQL procedures/functions
+├── inputs/               # Directory for input SQL procedures/functions
 ├── outputs/              # Generated optimized SQL and reports
-├── config.yaml           # Configuration file for database and settings
 ├── main.py               # Entry point for running the optimizer
 ├── requirements.txt      # Python dependencies
 └── README.md             # Project documentation
