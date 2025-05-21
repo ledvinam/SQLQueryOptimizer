@@ -1,71 +1,83 @@
 # SQL Optimization Agents Project (CrewAI Edition)
 
 ## Overview
-This project implements a robust multi-agent system for SQL query optimization using [CrewAI](https://crewai.com/) for agent orchestration and Model Context Protocol (MCP) for secure MS SQL Server access. The system is implemented in Python and consists of two main agent types:
+This project implements a robust multi-agent system for SQL query optimization using [CrewAI](https://crewai.com/) for agent orchestration and Model Context Protocol (MCP) for secure MS SQL Server access. The system is implemented in Python and leverages CrewAI's native Manager agent to coordinate three specialized agents:
 
-- **Coordinator (Director) Agent**: Orchestrates the optimization process, reads the database schema, analyzes the procedure, generates a step-by-step plan, and manages the workflow using CrewAI's agent management capabilities.
-- **Worker Agent**: Receives a single optimization step and the current procedure SQL, applies the step using LLMs (OpenAI or other), and returns the optimized SQL.
+### CrewAI Agents
 
-## Architecture
+#### 1. SQL Analyst
+- **Name:** Athena
+- **Goal:** Analyze SQL procedures/functions and database schema to identify optimization opportunities and performance bottlenecks.
+- **Backstory:** Athena is a seasoned database analyst with years of experience in enterprise-scale SQL systems. She has a keen eye for inefficiencies and a deep understanding of query execution plans, always striving to uncover the root causes of slowdowns and suggest actionable improvements.
+
+#### 2. SQL Writer/Implementor
+- **Name:** Daedalus
+- **Goal:** Rewrite and implement optimized SQL code based on the Analyst's recommendations, ensuring best practices and maintainability.
+- **Backstory:** Daedalus is a master SQL developer renowned for crafting high-performance, readable, and robust SQL code. He translates complex optimization strategies into practical, production-ready procedures and functions, always adhering to industry standards.
+
+#### 3. SQL Tester
+- **Name:** Hermes
+- **Goal:** Validate the optimized SQL by executing test queries, comparing results, and ensuring data consistency and performance improvements.
+- **Backstory:** Hermes is a meticulous QA engineer specializing in database systems. He designs and runs comprehensive tests to guarantee that optimizations do not alter expected results and that performance targets are met, providing detailed reports for every iteration.
+
+The CrewAI Manager agent (native to CrewAI) orchestrates the workflow between these agents, ensuring a seamless, iterative optimization process.
+
+## Architecture & Workflow
 
 ### Agents (CrewAI)
+- **Manager Agent (CrewAI native):** Orchestrates the workflow between Athena (Analyst), Daedalus (Writer), and Hermes (Tester).
+- **Athena (Analyst):** Analyzes input SQL and schema, produces optimization recommendations.
+- **Daedalus (Writer):** Implements the recommended optimizations in the SQL code.
+- **Hermes (Tester):** Validates the optimized SQL against provided queries and expected results.
 
-#### Coordinator Agent
-- Uses CrewAI to manage and coordinate Worker Agents.
-- Reads the database schema from the target MS SQL database.
-- Analyzes the stored procedure and generates a step-by-step optimization plan using the schema and LLM.
-- Executes the provided query and stores the result for later comparison.
-- For each step in the plan:
-  - Spawns a new Worker Agent via CrewAI, passing the current procedure SQL and the step instruction (plus any error feedback if needed).
-  - Deploys and validates the result after each step, retrying up to 5 times if needed.
-  - Only proceeds to the next step if the current one is valid (deploys and produces correct results).
-- After all steps, deploys and validates the final optimized procedure.
-- Stores all intermediate/final SQLs, results, and errors for traceability.
+### Communication & File Flow
+1. **Input:**
+   - Place your SQL procedures/functions in the `inputs/` directory.
+   - Place your test queries in the same directory or as specified.
+   - Update `config.yaml` with your database connection details.
+2. **Analysis:**
+   - Athena reviews the SQL and schema, generating a list of optimization steps and rationale.
+   - Output: `outputs/analysis_report.txt` (recommendations and identified issues).
+3. **Implementation:**
+   - Daedalus rewrites the SQL according to Athena's recommendations.
+   - Output: `outputs/optimized_procedure.sql` (optimized SQL code).
+4. **Testing:**
+   - Hermes executes the provided queries against both the original and optimized SQL, comparing results and performance.
+   - Output: `outputs/test_report.txt` (data consistency and performance comparison).
+5. **Iteration:**
+   - The Manager agent coordinates further iterations if issues are found, until all agents agree on the final optimized solution.
+6. **Final Output:**
+   - All intermediate and final files (analysis, optimized SQL, test reports) are saved in the `outputs/` directory for traceability.
 
-#### Worker Agent
-- Receives a single optimization step and the current procedure SQL (plus any error feedback) from the Coordinator via CrewAI.
-- Uses an LLM (OpenAI or other) to rewrite the procedure according to the step and feedback.
-- Returns the optimized SQL to the Coordinator Agent.
-
-### Communication Flow (CrewAI)
-1. **Coordinator**: Reads schema, analyzes procedure, generates plan.
-2. **Coordinator**: Executes original query, stores result.
-3. **Coordinator → Worker (via CrewAI)**: For each step, spawns a Worker Agent and requests optimization, passing current SQL and step instruction (plus error feedback if needed).
-4. **Coordinator**: Deploys and validates each step, retries up to 5 times if needed.
-5. **Coordinator**: If all steps succeed, deploys and validates final procedure.
-6. **Coordinator**: Compares results and performance, iterates if needed.
-
-### Technologies
-- **CrewAI**: For agent orchestration and message passing.
-- **Model Context Protocol (MCP)**: For secure, programmatic access to MS SQL Server.
-- **Python**: For agent implementation.
-- **MS SQL Server**: Target database for optimization.
+## Technologies
+- **CrewAI:** For agent orchestration and message passing.
+- **Model Context Protocol (MCP):** For secure, programmatic access to MS SQL Server.
+- **Python:** For agent implementation.
+- **MS SQL Server:** Target database for optimization.
 
 ## Usage
 
 Run the app with:
 ```
-python main.py <query-sql-file-1> <query-sql-file-2> ... <procedure-sql-file>
+python main.py --config config.yaml
 ```
 
-- You can provide a list of query SQL files to increase the number of data result samples for comparison.
-- All intermediate/final SQLs, results, and errors are saved for each step and iteration.
+- Place your SQL procedures/functions and test queries in `inputs/`.
+- All intermediate/final SQLs, analysis, and test reports are saved in `outputs/`.
 - Requires the `OPENAI_API_KEY` environment variable and a running MCP server.
 - CrewAI must be configured and running to enable agent orchestration.
 
 ## Example Output Files
-- `procedure.sql.step01.try01.sql` — SQL after step 1, first attempt
-- `procedure.sql.step01.try01.rpt` — Result of executing the query after step 1, first attempt
-- `procedure.sql.step01.try01.err` — Error (if any) for step 1, first attempt
-- `procedure.sql.final.sql` — Final SQL after all steps
-- `procedure.sql.final.rpt` — Final result after all steps
+- `outputs/analysis_report.txt` — Analyst's recommendations and findings
+- `outputs/optimized_procedure.sql` — Optimized SQL after implementation
+- `outputs/test_report.txt` — Test results and performance comparison
 
 ## Key Features
-- Multi-agent, message-passing architecture powered by CrewAI
-- Schema-aware, stepwise optimization with retries and error feedback
-- Full traceability of all changes and results
+- Multi-agent, message-passing architecture powered by CrewAI's native Manager
+- Professional-grade SQL analysis, implementation, and testing
+- Schema-aware, stepwise optimization with full traceability
 
 ## References
 - [CrewAI](https://crewai.com/)
-- [CrewAI Docs](https://docs.crewai.com/)]
+- [CrewAI Docs](https://docs.crewai.com/)
 - [MCP MSSQL](https://github.com/dperussina/mssql-mcp-server)
